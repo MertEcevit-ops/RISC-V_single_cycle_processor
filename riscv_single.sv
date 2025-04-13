@@ -1,5 +1,5 @@
 module riscv_single
-  import riscv_pkg::*;
+  import riscv_pkg.sv::*;
 (
     parameter DMemInitFile  = “dmem.mem”;       // data memory initialization file
     parameter IMemInitFile  = “imem.mem”;       // instruction memory initialization file
