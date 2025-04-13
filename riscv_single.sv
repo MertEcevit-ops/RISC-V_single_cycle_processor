@@ -1,8 +1,8 @@
 module core_model
   import riscv_pkg::*;
 (
-    parameter DMemInitFile  = “dmem.mem”,       // data memory initialization file
-    parameter IMemInitFile  = “imem.mem”       // instruction memory initialization file
+    parameter DMemInitFile  = "dmem.mem",       // data memory initialization file
+    parameter IMemInitFile  = "imem.mem"       // instruction memory initialization file
 )   (
     input  logic             clk_i,       // system clock
     input  logic             rstn_i,      // system reset
@@ -17,8 +17,119 @@ module core_model
     output logic  [XLEN-1:0] mem_data_o,  // retired memory data
     output logic             mem_wrt_o   // retired memory write enable signal
 );
-  // module body
-  // use other modules according to the need.
+
+  // Internal signals
+  logic [XLEN-1:0] pc, instr, read_data;
+  logic [1:0] result_src;
+  logic mem_write;
+  logic pc_src, alu_src, reg_write, jump;
+  logic [1:0] imm_src;
+  logic [2:0] alu_control;
+  logic zero;
+  logic [XLEN-1:0] alu_result, write_data;
+  
+  // For retirement tracking
+  logic [XLEN-1:0] pc_retired;
+  logic [XLEN-1:0] instr_retired;
+  logic [4:0] reg_addr_retired;
+  logic [XLEN-1:0] reg_data_retired;
+  logic [XLEN-1:0] mem_addr_retired;
+  logic [XLEN-1:0] mem_data_retired;
+  logic mem_wrt_retired;
+  
+  // Instantiate instruction memory
+  instr_memory imem(
+    .a(pc),
+    .rd(instr)
+  );
+  
+  // Instantiate data memory
+  data_mem dmem(
+    .a(alu_result),
+    .wd(write_data),
+    .clk(clk_i),
+    .rst(~rstn_i),
+    .we(mem_write),
+    .rd(read_data)
+  );
+  
+  // Instantiate control unit
+  control_unit ctrl(
+    .op(instr[6:0]),
+    .funct3(instr[14:12]),
+    .funct7b5(instr[30]),
+    .zero(zero),
+    .result_src(result_src),
+    .mem_write(mem_write),
+    .pc_src(pc_src),
+    .alu_src(alu_src),
+    .reg_write(reg_write),
+    .jump(jump),
+    .imm_src(imm_src),
+    .alu_control(alu_control)
+  );
+  
+  // Instantiate datapath
+  datapath dp(
+    .clk(clk_i),
+    .reset(~rstn_i),
+    .result_src(result_src),
+    .pc_src(pc_src),
+    .alu_src(alu_src),
+    .reg_write(reg_write),
+    .imm_src(imm_src),
+    .alu_control(alu_control),
+    .zero(zero),
+    .pc(pc),
+    .instr(instr),
+    .alu_result(alu_result),
+    .write_data(write_data),
+    .read_data(read_data)
+  );
+  
+  // Retirement tracking logic
+  always_ff @(posedge clk_i or negedge rstn_i) begin
+    if (!rstn_i) begin
+      pc_retired <= 0;
+      instr_retired <= 0;
+      reg_addr_retired <= 0;
+      reg_data_retired <= 0;
+      mem_addr_retired <= 0;
+      mem_data_retired <= 0;
+      mem_wrt_retired <= 0;
+      update_o <= 0;
+    end else begin
+      // Capture signals at retirement (when instruction completes)
+      update_o <= reg_write | mem_write;
+      pc_retired <= pc;
+      instr_retired <= instr;
+      
+      // Register write info
+      reg_addr_retired <= instr[11:7]; // rd
+      reg_data_retired <= (result_src == 2'b00) ? alu_result : 
+                         (result_src == 2'b01) ? read_data : 
+                         (result_src == 2'b10) ? pc + 4 : 0;
+      
+      // Memory access info
+      mem_addr_retired <= alu_result;
+      mem_data_retired <= write_data;
+      mem_wrt_retired <= mem_write;
+    end
+  end
+  
+  // Output assignments
+  assign pc_o = pc_retired;
+  assign instr_o = instr_retired;
+  assign reg_addr_o = reg_addr_retired;
+  assign reg_data_o = reg_data_retired;
+  assign mem_addr_o = mem_addr_retired;
+  assign mem_data_o = mem_data_retired;
+  assign mem_wrt_o = mem_wrt_retired;
+  
+  // Memory read interface
+  assign data_o = (addr_i[31:24] == 8'h00) ? imem.RAM[addr_i[23:2]] :  // Instruction memory access
+                 (addr_i[31:24] == 8'h01) ? dmem.data_mem[addr_i[23:2]] :  // Data memory access
+                 32'b0;
 
 endmodule
 
