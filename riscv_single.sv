@@ -325,5 +325,3 @@ module alu(
   assign v = ~(alu_control[0] ^ a[31] ^ b[31]) & (a[31] ^ sum[31]) & isAddSub;
   
 endmodule
-	
-endmodule
