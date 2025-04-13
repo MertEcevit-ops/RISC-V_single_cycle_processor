@@ -1,5 +1,5 @@
 module riscv_single
-  import riscv_pkg.sv::*;
+  import riscv_pkg::*;
 (
     parameter DMemInitFile  = “dmem.mem”;       // data memory initialization file
     parameter IMemInitFile  = “imem.mem”;       // instruction memory initialization file
@@ -39,10 +39,10 @@ module control_unit(input  logic [6:0] op,
   logic       branch;
 
   main_decoder md(op, result_src, mem_write, branch,
-             alu_src, reg_write, Jump, imm_src, alu_op);
+             alu_src, reg_write, jump, imm_src, alu_op);
   alu_decoder  ad(op[5], funct3, funct7b5, alu_op, alu_control);
 
-  assign pc_rc = branch & zero | jump;
+  assign pc_src = branch & zero | jump;
 endmodule
 
 module main_decoder	(input  logic [6:0] op,
@@ -253,12 +253,12 @@ module data_mem(
 	always@(posedge clk) begin
 	if (we)
 		begin
-		data_mem <= wd;
+		data_mem[a] <= wd;
 	 end
 	end
 endmodule
 
-module alu(;
+module alu(
 //Declaring inputs
 	input 	logic	[31:0]	a,b;
 	input 	logic	[3:0]	alu_control;
