@@ -1,8 +1,8 @@
-module riscv_single
+module core_model
   import riscv_pkg::*;
 (
-    parameter DMemInitFile  = “dmem.mem”;       // data memory initialization file
-    parameter IMemInitFile  = “imem.mem”;       // instruction memory initialization file
+    parameter DMemInitFile  = “dmem.mem”,       // data memory initialization file
+    parameter IMemInitFile  = “imem.mem”       // instruction memory initialization file
 )   (
     input  logic             clk_i,       // system clock
     input  logic             rstn_i,      // system reset
